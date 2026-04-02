@@ -244,7 +244,6 @@ function App() {
   }
 
   const selectedVendor = selectedVendorSummary
-  const topVendor = comparison.rankedVendors[0]
 
   const exportIds = useMemo(() => {
     if (exportScope === 'filtered') {
@@ -382,121 +381,130 @@ function App() {
       {error ? <p className="status-message error">{error}</p> : null}
       {loading ? <p className="status-message">Loading vendor quotes...</p> : null}
 
-      <section className="operational-grid">
-        <section className="table-section">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Vendor ledger</p>
-              <h2>Operational view of all current quotes</h2>
-            </div>
-            <p>Use the table to review vendors quickly, then use the ranked shortlist for the final decision.</p>
-          </div>
+      <section className="decision-hub">
+        <div className="decision-flow-heading">
+          <p className="eyebrow">Decision flow</p>
+          <h2>Simple path from review to final save</h2>
+        </div>
 
-          <div className="table-shell">
-            <table className="vendor-table">
-              <thead>
-                <tr>
-                  <th>Vendor</th>
-                  <th>Category</th>
-                  <th>Contact</th>
-                  <th>Quoted</th>
-                  <th>Shipping</th>
-                  <th>Total</th>
-                  <th>Lead time</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparison.rankedVendors.map((vendor) => {
-                  const isSelected = vendor.id === selectedVendorId
-                  const isCheapest = vendor.id === comparison.cheapestVendorId
-                  const isFastest = vendor.id === comparison.fastestVendorId
-                  const hasLowestTotal = vendor.id === comparison.lowestTotalVendorId
+        <div className="decision-card flow-step primary">
+          <span className="step-no">01</span>
+          <strong>Review</strong>
+          <p>Check the ledger and ranked vendors.</p>
+        </div>
 
-                  return (
-                    <tr key={vendor.id} className={isSelected ? 'is-selected-row' : ''}>
-                      <td>
-                        <div className="vendor-primary">
-                          <strong>{vendor.name}</strong>
-                          <span>{vendor.notes}</span>
-                        </div>
-                      </td>
-                      <td>{vendor.category}</td>
-                      <td>
-                        <div className="vendor-contact">
-                          <strong>{vendor.contact.name}</strong>
-                          <span>{vendor.contact.email}</span>
-                          <span>{vendor.contact.phone}</span>
-                        </div>
-                      </td>
-                      <td>{formatCurrency(vendor.quote.quotedPrice)}</td>
-                      <td>{formatCurrency(vendor.quote.shippingCost)}</td>
-                      <td>{formatCurrency(vendor.quote.totalCost)}</td>
-                      <td>{vendor.quote.leadTimeDays} days</td>
-                      <td>
-                        <div className="table-badges">
-                          {isSelected ? <span className="selected-pill">Selected</span> : null}
-                          {isCheapest ? <span className="highlight-chip">Best price</span> : null}
-                          {isFastest ? <span className="highlight-chip">Fastest</span> : null}
-                          {hasLowestTotal ? <span className="highlight-chip">Lowest total</span> : null}
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="table-action"
-                          onClick={() => handleSelectVendor(vendor.id)}
-                          disabled={savingId === vendor.id}
-                        >
-                          {savingId === vendor.id
-                            ? 'Saving...'
-                            : isSelected
-                              ? 'Selected'
-                              : 'Select'}
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <div className="decision-arrow" aria-hidden="true">→</div>
 
-        <aside className="memo-panel">
-          <div className="memo-panel-header">
-            <p className="eyebrow">Decision memo</p>
-            <h2>Capture the final rationale without crowding the main screen</h2>
-          </div>
+        <div className="decision-card flow-step">
+          <span className="step-no">02</span>
+          <strong>Select</strong>
+          <p>{selectedVendor ? selectedVendor.name : 'Choose a vendor'}</p>
+        </div>
 
-          <div className="memo-highlight">
-            <span>Top ranked vendor</span>
-            <strong>{topVendor ? topVendor.name : 'Not available yet'}</strong>
-            <p>
-              {topVendor
-                ? `${formatCurrency(topVendor.quote.totalCost)} landed cost with ${topVendor.quote.leadTimeDays} day lead time`
-                : 'Ranked results will appear here once vendor data is loaded.'}
-            </p>
-          </div>
+        <div className="decision-arrow" aria-hidden="true">→</div>
 
-          <div className="memo-preview">
-            <span className="memo-meta">Attached to</span>
-            <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
-            <span className="memo-meta">Updated {formatDate(decisionMemo.updatedAt)}</span>
-            <p>
-              {decisionMemo.content || 'No memo saved yet. Open the memo editor to capture commercial reasoning, negotiation context, or follow-up notes.'}
-            </p>
-          </div>
+        <div className="decision-card flow-step">
+          <span className="step-no">03</span>
+          <strong>Memo</strong>
+          <p>{decisionMemo.content ? 'Saved' : 'Add rationale'}</p>
+        </div>
 
+        <div className="decision-arrow" aria-hidden="true">→</div>
+
+        <div className="decision-card flow-step action-card">
+          <span className="step-no">04</span>
+          <strong>Finalize</strong>
+          <p>{selectedVendor ? `Updated ${formatDate(decisionMemo.updatedAt)}` : 'Ready after selection'}</p>
           <button
             type="button"
-            className="memo-button memo-open-button"
+            className="memo-button decision-open-button"
             onClick={() => setIsMemoOpen(true)}
+            disabled={!selectedVendorId}
           >
-            {decisionMemo.content ? 'Open memo editor' : 'Add decision memo'}
+            {decisionMemo.content ? 'Open memo' : 'Add memo'}
           </button>
-        </aside>
+        </div>
+      </section>
+
+      <section className="table-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Vendor ledger</p>
+            <h2>Operational view of all current quotes</h2>
+          </div>
+          <p>Use the table to review vendors quickly, then move to the decision memo only after a vendor is selected.</p>
+        </div>
+
+        <div className="table-shell">
+          <table className="vendor-table">
+            <thead>
+              <tr>
+                <th>Vendor</th>
+                <th>Category</th>
+                <th>Contact</th>
+                <th>Quoted</th>
+                <th>Shipping</th>
+                <th>Total</th>
+                <th>Lead time</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {comparison.rankedVendors.map((vendor) => {
+                const isSelected = vendor.id === selectedVendorId
+                const isCheapest = vendor.id === comparison.cheapestVendorId
+                const isFastest = vendor.id === comparison.fastestVendorId
+                const hasLowestTotal = vendor.id === comparison.lowestTotalVendorId
+
+                return (
+                  <tr key={vendor.id} className={isSelected ? 'is-selected-row' : ''}>
+                    <td>
+                      <div className="vendor-primary">
+                        <strong>{vendor.name}</strong>
+                        <span>{vendor.notes}</span>
+                      </div>
+                    </td>
+                    <td>{vendor.category}</td>
+                    <td>
+                      <div className="vendor-contact">
+                        <strong>{vendor.contact.name}</strong>
+                        <span>{vendor.contact.email}</span>
+                        <span>{vendor.contact.phone}</span>
+                      </div>
+                    </td>
+                    <td>{formatCurrency(vendor.quote.quotedPrice)}</td>
+                    <td>{formatCurrency(vendor.quote.shippingCost)}</td>
+                    <td>{formatCurrency(vendor.quote.totalCost)}</td>
+                    <td>{vendor.quote.leadTimeDays} days</td>
+                    <td>
+                      <div className="table-badges">
+                        {isSelected ? <span className="selected-pill">Selected</span> : null}
+                        {isCheapest ? <span className="highlight-chip">Best price</span> : null}
+                        {isFastest ? <span className="highlight-chip">Fastest</span> : null}
+                        {hasLowestTotal ? <span className="highlight-chip">Lowest total</span> : null}
+                      </div>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="table-action"
+                        onClick={() => handleSelectVendor(vendor.id)}
+                        disabled={savingId === vendor.id}
+                      >
+                        {savingId === vendor.id
+                          ? 'Saving...'
+                          : isSelected
+                            ? 'Selected'
+                            : 'Select'}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="section-heading ranked-heading">
@@ -504,7 +512,7 @@ function App() {
           <p className="eyebrow">Ranked shortlist</p>
           <h2>Final comparison cards</h2>
         </div>
-        <p>Use these to review the top vendors in more detail before locking the final selection.</p>
+        <p>Use these to review the top vendors in more detail before locking the final selection and opening the memo.</p>
       </section>
 
       <section className="comparison-grid">
@@ -605,7 +613,7 @@ function App() {
                 onClick={() => setIsMemoOpen(false)}
                 aria-label="Close memo dialog"
               >
-                ×
+                X
               </button>
             </div>
 

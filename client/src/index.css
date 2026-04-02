@@ -9,7 +9,7 @@
   --accent-2: #8b6844;
   --shadow-sm: 0 10px 24px rgba(58, 42, 24, 0.05);
   --shadow-lg: 0 22px 50px rgba(58, 42, 24, 0.08);
-  font-family: "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
+  font-family: Georgia, "Times New Roman", serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--text-strong);
