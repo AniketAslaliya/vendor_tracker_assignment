@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { startTransition, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const currencyFormatter = new Intl.NumberFormat('en-IN', {
@@ -32,6 +32,68 @@ function calculateScore(vendor, priceWeight, speedWeight, minimumPrice, fastestL
   return priceScore * priceWeight + speedScore * speedWeight
 }
 
+function ThemedSelect({ value, onChange, options, ariaLabel }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const rootRef = useRef(null)
+
+  const selectedOption = options.find((option) => option.value === value) ?? options[0]
+
+  useEffect(() => {
+    function handleDocumentClick(event) {
+      if (!rootRef.current?.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleDocumentClick)
+    return () => document.removeEventListener('mousedown', handleDocumentClick)
+  }, [])
+
+  return (
+    <div className={`themed-select ${isOpen ? 'open' : ''}`} ref={rootRef}>
+      <button
+        type="button"
+        className="themed-select-trigger"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-label={ariaLabel}
+        onClick={() => setIsOpen((open) => !open)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            setIsOpen(false)
+          }
+        }}
+      >
+        <span>{selectedOption?.label ?? ''}</span>
+        <span className="themed-select-caret" aria-hidden="true" />
+      </button>
+
+      {isOpen ? (
+        <ul className="themed-select-menu" role="listbox" aria-label={ariaLabel}>
+          {options.map((option) => {
+            const isSelected = option.value === value
+
+            return (
+              <li key={option.value} role="option" aria-selected={isSelected}>
+                <button
+                  type="button"
+                  className={`themed-option ${isSelected ? 'selected' : ''}`}
+                  onClick={() => {
+                    onChange(option.value)
+                    setIsOpen(false)
+                  }}
+                >
+                  {option.label}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+    </div>
+  )
+}
+
 function App() {
   const [vendors, setVendors] = useState([])
   const [categories, setCategories] = useState([])
@@ -41,6 +103,8 @@ function App() {
     averageLeadTimeDays: 0,
   })
   const [searchInput, setSearchInput] = useState('')
+  const [searchSuggestions, setSearchSuggestions] = useState([])
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false)
   const [category, setCategory] = useState('')
   const [selectedVendorId, setSelectedVendorId] = useState(null)
   const [selectedVendorSummary, setSelectedVendorSummary] = useState(null)
@@ -48,6 +112,7 @@ function App() {
   const [savingId, setSavingId] = useState(null)
   const [error, setError] = useState('')
   const [priceWeight, setPriceWeight] = useState(60)
+  const [sortBy, setSortBy] = useState('weighted_desc')
   const [exportScope, setExportScope] = useState('filtered')
   const [decisionMemo, setDecisionMemo] = useState({
     vendorId: null,
@@ -91,6 +156,7 @@ function App() {
         setVendors(payload.vendors)
         setCategories(payload.categories)
         setSummary(payload.summary)
+        setSearchSuggestions(payload.searchSuggestions ?? [])
         setSelectedVendorId(payload.selectedVendorId)
         setSelectedVendorSummary(payload.selectedVendor ?? null)
         setDecisionMemo(
@@ -245,17 +311,58 @@ function App() {
 
   const selectedVendor = selectedVendorSummary
 
+  const categoryOptions = useMemo(
+    () => [
+      { value: '', label: 'All categories' },
+      ...categories.map((item) => ({ value: item, label: item })),
+    ],
+    [categories],
+  )
+
+  const sortOptions = [
+    { value: 'weighted_desc', label: 'Weighted score (best first)' },
+    { value: 'total_asc', label: 'Total cost (low to high)' },
+    { value: 'quote_asc', label: 'Quoted price (low to high)' },
+    { value: 'lead_asc', label: 'Lead time (fastest first)' },
+    { value: 'name_asc', label: 'Vendor name (A to Z)' },
+  ]
+
+  const exportOptions = [
+    { value: 'filtered', label: 'Current filtered view' },
+    { value: 'top10', label: 'Top 10 ranked vendors' },
+    { value: 'selected', label: 'Selected vendor only' },
+    { value: 'all', label: 'All vendors' },
+  ]
+
+  const sortedVendors = useMemo(() => {
+    const list = [...comparison.rankedVendors]
+
+    if (sortBy === 'total_asc') {
+      list.sort((left, right) => left.quote.totalCost - right.quote.totalCost)
+    } else if (sortBy === 'quote_asc') {
+      list.sort((left, right) => left.quote.quotedPrice - right.quote.quotedPrice)
+    } else if (sortBy === 'lead_asc') {
+      list.sort((left, right) => left.quote.leadTimeDays - right.quote.leadTimeDays)
+    } else if (sortBy === 'name_asc') {
+      list.sort((left, right) => left.name.localeCompare(right.name, 'en-IN'))
+    } else {
+      list.sort((left, right) => right.weightedScore - left.weightedScore)
+    }
+
+    return list
+  }, [comparison.rankedVendors, sortBy])
+
   const exportIds = useMemo(() => {
     if (exportScope === 'filtered') {
-      return comparison.rankedVendors.map((vendor) => vendor.id)
+      return sortedVendors.map((vendor) => vendor.id)
     }
 
     if (exportScope === 'top10') {
-      return comparison.rankedVendors.slice(0, 10).map((vendor) => vendor.id)
+      return sortedVendors.slice(0, 10).map((vendor) => vendor.id)
     }
 
     return []
-  }, [comparison.rankedVendors, exportScope])
+  }, [exportScope, sortedVendors])
 
   const exportHref = useMemo(() => {
     const params = new URLSearchParams()
@@ -322,12 +429,12 @@ function App() {
         <div className="export-controls">
           <label className="export-field">
             <span>Export scope</span>
-            <select value={exportScope} onChange={(event) => setExportScope(event.target.value)}>
-              <option value="filtered">Current filtered view</option>
-              <option value="top10">Top 10 ranked vendors</option>
-              <option value="selected">Selected vendor only</option>
-              <option value="all">All vendors</option>
-            </select>
+            <ThemedSelect
+              value={exportScope}
+              onChange={setExportScope}
+              options={exportOptions}
+              ariaLabel="Export scope"
+            />
           </label>
           <a
             className="export-link"
@@ -340,29 +447,62 @@ function App() {
       </section>
 
       <section className="control-panel">
-        <label className="field">
+        <label className="field search-field">
           <span>Search vendors</span>
           <input
             type="search"
             value={searchInput}
+            autoComplete="off"
             onChange={(event) => {
               const value = event.target.value
               startTransition(() => setSearchInput(value))
+              setIsSuggestionOpen(true)
+            }}
+            onFocus={() => setIsSuggestionOpen(true)}
+            onBlur={() => {
+              window.setTimeout(() => setIsSuggestionOpen(false), 120)
             }}
             placeholder="Search by vendor or contact"
           />
+
+          {isSuggestionOpen && searchInput.trim() && searchSuggestions.length > 0 ? (
+            <div className="search-suggestions" role="listbox" aria-label="Vendor suggestions">
+              {searchSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className="suggestion-item"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    startTransition(() => setSearchInput(suggestion))
+                    setIsSuggestionOpen(false)
+                  }}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </label>
 
         <label className="field">
           <span>Category</span>
-          <select value={category} onChange={(event) => setCategory(event.target.value)}>
-            <option value="">All categories</option>
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+          <ThemedSelect
+            value={category}
+            onChange={setCategory}
+            options={categoryOptions}
+            ariaLabel="Category"
+          />
+        </label>
+
+        <label className="field">
+          <span>Sort by</span>
+          <ThemedSelect
+            value={sortBy}
+            onChange={setSortBy}
+            options={sortOptions}
+            ariaLabel="Sort vendors"
+          />
         </label>
 
         <label className="field field-slider">
@@ -391,21 +531,22 @@ function App() {
           <span className="flow-chip">
             <span className="step-no">01</span>
             <strong>Review</strong>
+            <small className="flow-detail">Scan ledger, compare rank and price.</small>
           </span>
-          <span className="decision-arrow" aria-hidden="true">→</span>
           <span className="flow-chip">
             <span className="step-no">02</span>
             <strong>{selectedVendor ? 'Selected' : 'Select'}</strong>
+            <small className="flow-detail">{selectedVendor ? selectedVendor.name : 'Pick one vendor to continue.'}</small>
           </span>
-          <span className="decision-arrow" aria-hidden="true">→</span>
           <span className="flow-chip">
             <span className="step-no">03</span>
             <strong>{decisionMemo.content ? 'Memo saved' : 'Memo'}</strong>
+            <small className="flow-detail">{decisionMemo.content ? 'Reason captured and timestamped.' : 'Add business rationale.'}</small>
           </span>
-          <span className="decision-arrow" aria-hidden="true">→</span>
           <span className="flow-chip end-chip">
             <span className="step-no">04</span>
             <strong>Finalize</strong>
+            <small className="flow-detail">Lock decision and export if needed.</small>
           </span>
           <button
             type="button"
@@ -443,7 +584,7 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {comparison.rankedVendors.map((vendor) => {
+              {sortedVendors.map((vendor) => {
                 const isSelected = vendor.id === selectedVendorId
                 const isCheapest = vendor.id === comparison.cheapestVendorId
                 const isFastest = vendor.id === comparison.fastestVendorId
@@ -508,7 +649,7 @@ function App() {
       </section>
 
       <section className="comparison-grid">
-        {comparison.rankedVendors.map((vendor, index) => {
+        {sortedVendors.map((vendor, index) => {
           const isSelected = vendor.id === selectedVendorId
           const isCheapest = vendor.id === comparison.cheapestVendorId
           const isFastest = vendor.id === comparison.fastestVendorId

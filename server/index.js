@@ -28,6 +28,121 @@ function mapVendor(row, selectedVendorId) {
   };
 }
 
+function normalizeText(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function levenshteinDistance(left, right) {
+  if (left === right) {
+    return 0;
+  }
+
+  if (!left.length) {
+    return right.length;
+  }
+
+  if (!right.length) {
+    return left.length;
+  }
+
+  const previous = new Array(right.length + 1);
+  const current = new Array(right.length + 1);
+
+  for (let column = 0; column <= right.length; column += 1) {
+    previous[column] = column;
+  }
+
+  for (let row = 1; row <= left.length; row += 1) {
+    current[0] = row;
+
+    for (let column = 1; column <= right.length; column += 1) {
+      const cost = left[row - 1] === right[column - 1] ? 0 : 1;
+      current[column] = Math.min(
+        current[column - 1] + 1,
+        previous[column] + 1,
+        previous[column - 1] + cost,
+      );
+    }
+
+    for (let column = 0; column <= right.length; column += 1) {
+      previous[column] = current[column];
+    }
+  }
+
+  return previous[right.length];
+}
+
+function getSearchSuggestions(rows, searchQuery, limit = 6) {
+  const normalizedQuery = normalizeText(searchQuery);
+  if (!normalizedQuery) {
+    return [];
+  }
+
+  const threshold = normalizedQuery.length <= 4 ? 0.62 : 0.48;
+
+  const scored = rows
+    .map((row) => {
+      const normalizedName = normalizeText(row.name);
+      const normalizedContact = normalizeText(row.contact_name);
+      const normalizedEmail = normalizeText(row.contact_email);
+
+      if (!normalizedName) {
+        return null;
+      }
+
+      if (
+        normalizedName.includes(normalizedQuery) ||
+        normalizedContact.includes(normalizedQuery) ||
+        normalizedEmail.includes(normalizedQuery)
+      ) {
+        return {
+          name: row.name,
+          score: 0,
+        };
+      }
+
+      const distance = levenshteinDistance(normalizedQuery, normalizedName);
+      const normalizedDistance = distance / Math.max(normalizedQuery.length, normalizedName.length);
+
+      if (normalizedDistance > threshold) {
+        return null;
+      }
+
+      return {
+        name: row.name,
+        score: normalizedDistance,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => {
+      if (left.score !== right.score) {
+        return left.score - right.score;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+
+  const suggestions = [];
+  const seen = new Set();
+
+  for (const item of scored) {
+    if (seen.has(item.name)) {
+      continue;
+    }
+
+    seen.add(item.name);
+    suggestions.push(item.name);
+
+    if (suggestions.length >= limit) {
+      break;
+    }
+  }
+
+  return suggestions;
+}
+
 async function getDecisionMemo(db) {
   const memo = await db.get(
     "SELECT value FROM app_state WHERE key = 'decisionMemo'",
@@ -175,6 +290,18 @@ async function startServer() {
       values,
     );
 
+    const suggestionRows = await db.all(
+      `
+        SELECT
+          name,
+          contact_name,
+          contact_email
+        FROM vendors
+        ${category ? 'WHERE category = ?' : ''}
+      `,
+      category ? [category] : [],
+    );
+
     const categories = await db.all(
       'SELECT DISTINCT category FROM vendors ORDER BY category ASC',
     );
@@ -194,6 +321,7 @@ async function startServer() {
 
     res.json({
       vendors,
+      searchSuggestions: getSearchSuggestions(suggestionRows, search),
       categories: categories.map((item) => item.category),
       selectedVendorId,
       selectedVendor,
