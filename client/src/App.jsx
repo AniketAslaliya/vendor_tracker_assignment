@@ -384,11 +384,27 @@ function App() {
       <section className="hero-panel">
         <div className="hero-copy">
           <p className="eyebrow">Ops Procurement Workspace</p>
+          <p className="hero-kicker">Live sourcing cockpit</p>
           <h1>Vendor Tracker</h1>
           <p className="hero-text">
             Compare supplier quotes, evaluate tradeoffs between price and delivery,
             and move from vendor review to final decision without losing context.
           </p>
+
+          <div className="hero-meta-strip" aria-label="Procurement highlights">
+            <article>
+              <span>Active vendors</span>
+              <strong>{numberFormatter.format(summary.vendorCount)}</strong>
+            </article>
+            <article>
+              <span>Current mode</span>
+              <strong>{priceWeight}% value, {leadTimeWeight}% speed</strong>
+            </article>
+            <article>
+              <span>Memo status</span>
+              <strong>{decisionMemo.content ? 'Decision logged' : 'Awaiting rationale'}</strong>
+            </article>
+          </div>
         </div>
 
         <aside className="hero-side">
@@ -399,6 +415,12 @@ function App() {
               ? `${formatCurrency(selectedVendor.quote.totalCost)} total landed cost | ${selectedVendor.quote.leadTimeDays} day lead time`
               : 'Review the shortlist and lock a vendor when you are ready.'}
           </p>
+
+          <div className="hero-side-points">
+            <span>Centralized quote intelligence</span>
+            <span>Faster shortlist decisions</span>
+            <span>Traceable final rationale</span>
+          </div>
         </aside>
       </section>
 
@@ -802,6 +824,18 @@ function App() {
           </section>
         </div>
       ) : null}
+
+      <footer className="app-footer">
+        <div className="footer-block">
+          <p className="eyebrow">Vendor Tracker</p>
+          <strong>Premium procurement workspace for fast and auditable supplier decisions.</strong>
+        </div>
+        <div className="footer-meta">
+          <span>Selected vendor: {selectedVendor ? selectedVendor.name : 'Not selected'}</span>
+          <span>Last memo update: {formatDate(decisionMemo.updatedAt)}</span>
+          <span>{new Date().getFullYear()} Ops Procurement Suite</span>
+        </div>
+      </footer>
     </main>
   )
 }

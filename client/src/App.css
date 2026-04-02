@@ -24,8 +24,23 @@ textarea {
   grid-template-columns: minmax(0, 1.8fr) minmax(280px, 360px);
   gap: 24px;
   align-items: start;
-  padding: 18px 0 22px;
+  padding: 22px 0 24px;
   border-bottom: 1px solid var(--line);
+}
+
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 5px 12px;
+  border: 1px solid rgba(207, 189, 166, 0.95);
+  border-radius: 999px;
+  background: rgba(253, 247, 239, 0.88);
+  color: #7a5a39;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hero-copy h1,
@@ -71,8 +86,38 @@ textarea {
 
 .hero-text {
   max-width: 700px;
-  margin: 14px 0 0;
+  margin: 14px 0 16px;
   font-size: 1rem;
+}
+
+.hero-meta-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 780px;
+}
+
+.hero-meta-strip article {
+  padding: 12px 14px;
+  border: 1px solid rgba(216, 203, 185, 0.92);
+  border-radius: 14px;
+  background: rgba(255, 252, 246, 0.76);
+}
+
+.hero-meta-strip span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hero-meta-strip strong {
+  color: var(--text-strong);
+  font-size: 0.93rem;
+  line-height: 1.25;
 }
 
 .hero-side {
@@ -104,6 +149,28 @@ textarea {
 .hero-side p {
   margin: 8px 0 0;
   font-size: 0.95rem;
+}
+
+.hero-side-points {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.hero-side-points span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 0.83rem;
+}
+
+.hero-side-points span::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #315f54;
 }
 
 .summary-strip {
@@ -868,6 +935,37 @@ textarea {
   opacity: 0.7;
 }
 
+.app-footer {
+  margin-top: 34px;
+  padding: 18px 20px;
+  border: 1px solid rgba(211, 196, 176, 0.92);
+  border-radius: 20px;
+  background:
+    linear-gradient(145deg, rgba(255, 250, 242, 0.96), rgba(248, 239, 227, 0.94));
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.footer-block strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.footer-meta {
+  display: grid;
+  gap: 8px;
+}
+
+.footer-meta span {
+  color: var(--text-soft);
+  font-size: 0.88rem;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -911,10 +1009,12 @@ textarea {
 
 @media (max-width: 1080px) {
   .hero-panel,
+  .hero-meta-strip,
   .summary-strip,
   .comparison-grid,
   .control-panel,
-  .memo-modal-grid {
+  .memo-modal-grid,
+  .app-footer {
     grid-template-columns: 1fr;
   }
 

@@ -46,6 +46,15 @@ Vendor Tracker is a full-stack internal procurement tool for comparing vendor qu
 ### Run locally
 
 ```bash
+git clone https://github.com/AniketAslaliya/vendor_tracker_assignment.git
+cd vendor_tracker_assignment
+npm install
+npm run dev
+```
+
+If you already cloned the repo earlier, run:
+
+```bash
 npm install
 npm run dev
 ```
