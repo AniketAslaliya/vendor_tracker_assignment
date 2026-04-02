@@ -1,0 +1,35 @@
+{
+  "name": "vendor-tracker",
+  "version": "1.0.0",
+  "description": "Full-stack vendor comparison tool for an ops team",
+  "main": "server/index.js",
+  "scripts": {
+    "postinstall": "npm --prefix client install",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "lint": "npm --prefix client run lint",
+    "start": "node server/index.js"
+  },
+  "keywords": [
+    "vendor",
+    "tracker",
+    "react",
+    "express",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.14"
+  }
+}
