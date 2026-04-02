@@ -384,40 +384,32 @@ function App() {
       <section className="decision-hub">
         <div className="decision-flow-heading">
           <p className="eyebrow">Decision flow</p>
-          <h2>Simple path from review to final save</h2>
+          <h2>Review to Select to Memo to Finalize</h2>
         </div>
 
-        <div className="decision-card flow-step primary">
-          <span className="step-no">01</span>
-          <strong>Review</strong>
-          <p>Check the ledger and ranked vendors.</p>
-        </div>
-
-        <div className="decision-arrow" aria-hidden="true">→</div>
-
-        <div className="decision-card flow-step">
-          <span className="step-no">02</span>
-          <strong>Select</strong>
-          <p>{selectedVendor ? selectedVendor.name : 'Choose a vendor'}</p>
-        </div>
-
-        <div className="decision-arrow" aria-hidden="true">→</div>
-
-        <div className="decision-card flow-step">
-          <span className="step-no">03</span>
-          <strong>Memo</strong>
-          <p>{decisionMemo.content ? 'Saved' : 'Add rationale'}</p>
-        </div>
-
-        <div className="decision-arrow" aria-hidden="true">→</div>
-
-        <div className="decision-card flow-step action-card">
-          <span className="step-no">04</span>
-          <strong>Finalize</strong>
-          <p>{selectedVendor ? `Updated ${formatDate(decisionMemo.updatedAt)}` : 'Ready after selection'}</p>
+        <div className="decision-strip" role="group" aria-label="Decision flow steps">
+          <span className="flow-chip">
+            <span className="step-no">01</span>
+            <strong>Review</strong>
+          </span>
+          <span className="decision-arrow" aria-hidden="true">→</span>
+          <span className="flow-chip">
+            <span className="step-no">02</span>
+            <strong>{selectedVendor ? 'Selected' : 'Select'}</strong>
+          </span>
+          <span className="decision-arrow" aria-hidden="true">→</span>
+          <span className="flow-chip">
+            <span className="step-no">03</span>
+            <strong>{decisionMemo.content ? 'Memo saved' : 'Memo'}</strong>
+          </span>
+          <span className="decision-arrow" aria-hidden="true">→</span>
+          <span className="flow-chip end-chip">
+            <span className="step-no">04</span>
+            <strong>Finalize</strong>
+          </span>
           <button
             type="button"
-            className="memo-button decision-open-button"
+            className="memo-button decision-open-button strip-button"
             onClick={() => setIsMemoOpen(true)}
             disabled={!selectedVendorId}
           >

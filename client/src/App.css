@@ -301,78 +301,91 @@ textarea {
 
 .decision-hub {
   display: grid;
-  grid-template-columns: 1.1fr 40px 1fr 40px 1fr 40px 1.1fr;
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 14px;
   padding: 24px 0;
   border-bottom: 1px solid var(--line);
-  align-items: stretch;
+  align-items: start;
 }
 
 .decision-flow-heading {
   display: grid;
-  align-content: center;
+  align-content: start;
   gap: 8px;
-  padding-right: 12px;
 }
 
 .decision-flow-heading h2 {
   margin: 0;
   color: var(--text-strong);
-  font-size: 1.45rem;
+  font-size: 1.3rem;
   line-height: 1.1;
   letter-spacing: -0.04em;
 }
 
-.decision-card {
-  display: grid;
-  gap: 8px;
-  padding: 18px 16px;
+.decision-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.62);
   box-shadow: var(--shadow-sm);
-  min-height: 160px;
+  overflow-x: auto;
 }
 
-.decision-card.primary {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(247, 240, 230, 0.95));
-}
-
-.decision-card p {
-  margin: 0;
-}
-
-.flow-step {
-  align-content: start;
+.flow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding: 9px 12px;
+  border: 1px solid rgba(214, 201, 184, 0.8);
+  border-radius: 12px;
+  background: rgba(255, 251, 245, 0.92);
 }
 
 .step-no {
-  display: inline-flex;
-  width: fit-content;
-  padding: 4px 8px;
-  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
   background: #f4ead9;
   color: #75512a;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
+.flow-chip strong {
+  color: var(--text-strong);
+  font-size: 0.88rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .decision-arrow {
-  display: grid;
-  place-items: center;
+  flex: 0 0 auto;
   color: var(--accent-2);
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   font-weight: 700;
 }
 
-.action-card {
-  align-content: start;
+.end-chip {
+  margin-right: 4px;
 }
 
 .decision-open-button {
-  width: 100%;
-  margin-top: 6px;
+  margin-top: 0;
+}
+
+.strip-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-height: 46px;
+  white-space: nowrap;
 }
 
 .table-section {
@@ -748,12 +761,23 @@ textarea {
 }
 
 @media (max-width: 1180px) {
-  .decision-hub {
-    grid-template-columns: 1fr;
+  .decision-strip {
+    gap: 8px;
+    padding: 12px;
   }
 
-  .decision-arrow {
-    display: none;
+  .flow-chip {
+    min-height: 42px;
+    padding: 8px 10px;
+  }
+
+  .step-no {
+    width: 28px;
+    height: 28px;
+  }
+
+  .strip-button {
+    margin-left: 8px;
   }
 }
 
@@ -802,5 +826,30 @@ textarea {
   .memo-modal-actions {
     width: 100%;
     display: grid;
+  }
+
+  .decision-flow-heading h2 {
+    font-size: 1.12rem;
+  }
+
+  .decision-arrow {
+    display: none;
+  }
+
+  .decision-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: visible;
+  }
+
+  .flow-chip {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .strip-button {
+    width: 100%;
+    margin-left: 0;
+    grid-column: 1 / -1;
   }
 }
