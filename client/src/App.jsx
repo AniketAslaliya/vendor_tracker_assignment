@@ -13,6 +13,19 @@ function formatCurrency(value) {
   return currencyFormatter.format(value)
 }
 
+function formatDate(value) {
+  if (!value) {
+    return 'No memo saved yet'
+  }
+
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
 function calculateScore(vendor, priceWeight, speedWeight, minimumPrice, fastestLeadTime) {
   const priceScore = minimumPrice / vendor.quote.quotedPrice
   const speedScore = fastestLeadTime / vendor.quote.leadTimeDays
@@ -34,6 +47,13 @@ function App() {
   const [savingId, setSavingId] = useState(null)
   const [error, setError] = useState('')
   const [priceWeight, setPriceWeight] = useState(60)
+  const [decisionMemo, setDecisionMemo] = useState({
+    vendorId: null,
+    content: '',
+    updatedAt: null,
+  })
+  const [memoDraft, setMemoDraft] = useState('')
+  const [memoSaving, setMemoSaving] = useState(false)
 
   const deferredSearch = useDeferredValue(searchInput)
   const leadTimeWeight = 100 - priceWeight
@@ -69,6 +89,14 @@ function App() {
         setCategories(payload.categories)
         setSummary(payload.summary)
         setSelectedVendorId(payload.selectedVendorId)
+        setDecisionMemo(
+          payload.decisionMemo ?? {
+            vendorId: null,
+            content: '',
+            updatedAt: null,
+          },
+        )
+        setMemoDraft(payload.decisionMemo?.content ?? '')
       } catch (loadError) {
         if (!ignore) {
           setError(loadError.message)
@@ -146,6 +174,9 @@ function App() {
       }
 
       setSelectedVendorId(vendorId)
+      if (decisionMemo.vendorId !== vendorId) {
+        setMemoDraft('')
+      }
     } catch (saveError) {
       setError(saveError.message)
     } finally {
@@ -153,7 +184,43 @@ function App() {
     }
   }
 
+  async function handleSaveMemo() {
+    if (!selectedVendorId) {
+      setError('Select a vendor before saving a decision memo.')
+      return
+    }
+
+    setMemoSaving(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/decision-memo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vendorId: selectedVendorId,
+          content: memoDraft,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Decision memo could not be saved.')
+      }
+
+      const payload = await response.json()
+      setDecisionMemo(payload.decisionMemo)
+      setMemoDraft(payload.decisionMemo.content)
+    } catch (saveError) {
+      setError(saveError.message)
+    } finally {
+      setMemoSaving(false)
+    }
+  }
+
   const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId)
+  const topVendor = comparison.rankedVendors[0]
 
   return (
     <main className="app-shell">
@@ -162,25 +229,49 @@ function App() {
           <p className="eyebrow">Ops Procurement Workspace</p>
           <h1>Vendor Tracker</h1>
           <p className="hero-text">
-            Compare supplier quotes, spot the fastest delivery, and lock in a vendor
-            choice that survives reloads.
+            Compare supplier quotes, evaluate tradeoffs between price and delivery,
+            and move from vendor review to final decision without losing context.
           </p>
         </div>
 
-        <div className="hero-metrics">
-          <article className="metric-card">
-            <span>Visible vendors</span>
-            <strong>{numberFormatter.format(summary.vendorCount)}</strong>
-          </article>
-          <article className="metric-card">
-            <span>Average quote</span>
-            <strong>{formatCurrency(summary.averageQuotedPrice)}</strong>
-          </article>
-          <article className="metric-card">
-            <span>Average lead time</span>
-            <strong>{summary.averageLeadTimeDays.toFixed(1)} days</strong>
-          </article>
+        <aside className="hero-side">
+          <p className="hero-side-label">Current decision</p>
+          <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
+          <p>
+            {selectedVendor
+              ? `${formatCurrency(selectedVendor.quote.totalCost)} total landed cost | ${selectedVendor.quote.leadTimeDays} day lead time`
+              : 'Review the shortlist and lock a vendor when you are ready.'}
+          </p>
+        </aside>
+      </section>
+
+      <section className="summary-strip" aria-label="Summary metrics">
+        <article>
+          <span>Visible vendors</span>
+          <strong>{numberFormatter.format(summary.vendorCount)}</strong>
+        </article>
+        <article>
+          <span>Average quote</span>
+          <strong>{formatCurrency(summary.averageQuotedPrice)}</strong>
+        </article>
+        <article>
+          <span>Average lead time</span>
+          <strong>{summary.averageLeadTimeDays.toFixed(1)} days</strong>
+        </article>
+        <article>
+          <span>Scoring model</span>
+          <strong>{priceWeight}% price / {leadTimeWeight}% speed</strong>
+        </article>
+      </section>
+
+      <section className="workspace-bar">
+        <div className="workspace-copy">
+          <p className="eyebrow">Procurement desk</p>
+          <h2>Shortlist vendors, save the final call, and keep the reason attached</h2>
         </div>
+        <a className="export-link" href="/api/vendors/export.csv">
+          Export CSV
+        </a>
       </section>
 
       <section className="control-panel">
@@ -218,34 +309,144 @@ function App() {
             value={priceWeight}
             onChange={(event) => setPriceWeight(Number(event.target.value))}
           />
-          <small>{priceWeight}% price / {leadTimeWeight}% speed</small>
+          <small>Adjust the balance between commercial value and speed.</small>
         </label>
-
-        <a className="export-link" href="/api/vendors/export.csv">
-          Export CSV
-        </a>
       </section>
 
       {error ? <p className="status-message error">{error}</p> : null}
       {loading ? <p className="status-message">Loading vendor quotes...</p> : null}
 
-      <section className="selection-banner">
+      <section className="operational-grid">
+        <section className="table-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Vendor ledger</p>
+              <h2>Operational view of all current quotes</h2>
+            </div>
+            <p>Use the table to review vendors quickly, then use the ranked shortlist for the final decision.</p>
+          </div>
+
+          <div className="table-shell">
+            <table className="vendor-table">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Category</th>
+                  <th>Contact</th>
+                  <th>Quoted</th>
+                  <th>Shipping</th>
+                  <th>Total</th>
+                  <th>Lead time</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.rankedVendors.map((vendor) => {
+                  const isSelected = vendor.id === selectedVendorId
+                  const isCheapest = vendor.id === comparison.cheapestVendorId
+                  const isFastest = vendor.id === comparison.fastestVendorId
+                  const hasLowestTotal = vendor.id === comparison.lowestTotalVendorId
+
+                  return (
+                    <tr key={vendor.id} className={isSelected ? 'is-selected-row' : ''}>
+                      <td>
+                        <div className="vendor-primary">
+                          <strong>{vendor.name}</strong>
+                          <span>{vendor.notes}</span>
+                        </div>
+                      </td>
+                      <td>{vendor.category}</td>
+                      <td>
+                        <div className="vendor-contact">
+                          <strong>{vendor.contact.name}</strong>
+                          <span>{vendor.contact.email}</span>
+                          <span>{vendor.contact.phone}</span>
+                        </div>
+                      </td>
+                      <td>{formatCurrency(vendor.quote.quotedPrice)}</td>
+                      <td>{formatCurrency(vendor.quote.shippingCost)}</td>
+                      <td>{formatCurrency(vendor.quote.totalCost)}</td>
+                      <td>{vendor.quote.leadTimeDays} days</td>
+                      <td>
+                        <div className="table-badges">
+                          {isSelected ? <span className="selected-pill">Selected</span> : null}
+                          {isCheapest ? <span className="highlight-chip">Best price</span> : null}
+                          {isFastest ? <span className="highlight-chip">Fastest</span> : null}
+                          {hasLowestTotal ? <span className="highlight-chip">Lowest total</span> : null}
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="table-action"
+                          onClick={() => handleSelectVendor(vendor.id)}
+                          disabled={savingId === vendor.id}
+                        >
+                          {savingId === vendor.id
+                            ? 'Saving...'
+                            : isSelected
+                              ? 'Selected'
+                              : 'Select'}
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside className="memo-panel">
+          <div className="memo-panel-header">
+            <p className="eyebrow">Decision memo</p>
+            <h2>Keep the final reasoning with the vendor choice</h2>
+          </div>
+
+          <div className="memo-highlight">
+            <span>Top ranked vendor</span>
+            <strong>{topVendor ? topVendor.name : 'Not available yet'}</strong>
+            <p>
+              {topVendor
+                ? `${formatCurrency(topVendor.quote.totalCost)} landed cost with ${topVendor.quote.leadTimeDays} day lead time`
+                : 'Ranked results will appear here once vendor data is loaded.'}
+            </p>
+          </div>
+
+          <label className="memo-field">
+            <span>Decision notes</span>
+            <textarea
+              value={memoDraft}
+              onChange={(event) => setMemoDraft(event.target.value.slice(0, 400))}
+              placeholder="Add why this vendor was chosen, negotiation notes, or next follow-up."
+            />
+          </label>
+
+          <div className="memo-footer">
+            <div>
+              <span className="memo-meta">Attached to</span>
+              <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
+              <span className="memo-meta">Updated {formatDate(decisionMemo.updatedAt)}</span>
+            </div>
+            <button
+              type="button"
+              className="memo-button"
+              onClick={handleSaveMemo}
+              disabled={memoSaving || !selectedVendorId}
+            >
+              {memoSaving ? 'Saving memo...' : 'Save memo'}
+            </button>
+          </div>
+        </aside>
+      </section>
+
+      <section className="section-heading ranked-heading">
         <div>
-          <p className="eyebrow">Current saved choice</p>
-          <strong>
-            {selectedVendor ? selectedVendor.name : 'No vendor selected yet'}
-          </strong>
-          <p>
-            {selectedVendor
-              ? `${formatCurrency(selectedVendor.quote.totalCost)} landed cost, ${selectedVendor.quote.leadTimeDays} day lead time`
-              : 'Pick a vendor and the backend will persist it in SQLite.'}
-          </p>
+          <p className="eyebrow">Ranked shortlist</p>
+          <h2>Final comparison cards</h2>
         </div>
-        <div className="badge-group">
-          <span className="chip">SQLite persistence</span>
-          <span className="chip">REST API</span>
-          <span className="chip">Mock seeded data</span>
-        </div>
+        <p>Use these to review the top vendors in more detail before locking the final selection.</p>
       </section>
 
       <section className="comparison-grid">
@@ -259,6 +460,7 @@ function App() {
             <article
               key={vendor.id}
               className={`vendor-card ${isSelected ? 'selected' : ''}`}
+              style={{ animationDelay: `${index * 80}ms` }}
             >
               <div className="card-topline">
                 <span className="rank-pill">Rank #{index + 1}</span>
@@ -268,7 +470,7 @@ function App() {
               <div className="card-header">
                 <div>
                   <h2>{vendor.name}</h2>
-                  <p>{vendor.contact.name}</p>
+                  <p>{vendor.contact.name} | {vendor.contact.email}</p>
                 </div>
                 {isSelected ? <span className="selected-pill">Saved pick</span> : null}
               </div>
@@ -292,18 +494,17 @@ function App() {
                 </div>
               </div>
 
-              <div className="badge-group">
+              <div className="score-track" aria-hidden="true">
+                <span style={{ width: `${Math.min(vendor.weightedScore * 100, 100)}%` }} />
+              </div>
+
+              <div className="table-badges">
                 {isCheapest ? <span className="highlight-chip">Best price</span> : null}
                 {isFastest ? <span className="highlight-chip">Fastest delivery</span> : null}
                 {hasLowestTotal ? <span className="highlight-chip">Lowest total</span> : null}
               </div>
 
               <p className="notes">{vendor.notes}</p>
-
-              <div className="contact-list">
-                <span>{vendor.contact.email}</span>
-                <span>{vendor.contact.phone}</span>
-              </div>
 
               <div className="card-footer">
                 <p>

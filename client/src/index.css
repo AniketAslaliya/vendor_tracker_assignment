@@ -1,11 +1,11 @@
 :root {
-  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-family: Georgia, "Times New Roman", serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #f6f7fb;
+  color: #2b241c;
   background:
-    radial-gradient(circle at top, rgba(255, 162, 72, 0.18), transparent 28%),
-    linear-gradient(180deg, #090c16 0%, #0d1324 55%, #111b30 100%);
+    radial-gradient(circle at top left, rgba(177, 144, 103, 0.12), transparent 26%),
+    linear-gradient(180deg, #f7f2e8 0%, #f4efe6 48%, #f1ece2 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,6 +20,18 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(110, 88, 62, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 88, 62, 0.03) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 92%);
 }
 
 #root {

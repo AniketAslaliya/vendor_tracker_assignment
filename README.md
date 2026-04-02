@@ -13,10 +13,12 @@ Vendor Tracker is a full-stack internal tool for ops teams to compare supplier q
 
 - Vendor listing with name, category, contact info, quoted price, shipping cost, lead time, and total cost
 - Search and category filtering
-- Side-by-side comparison cards with auto-highlights for best price, fastest delivery, and lowest total cost
+- Operational vendor ledger with quick selection actions
+- Ranked comparison cards with auto-highlights for best price, fastest delivery, and lowest total cost
 - Persisted vendor selection stored in SQLite
 - Weighted scoring slider for price versus speed
 - CSV export for vendor comparison data
+- Persisted decision memo for the selected vendor so the team can keep the final reasoning attached to the choice
 
 ## Why SQLite
 
@@ -59,6 +61,7 @@ npm start
 - `GET /api/vendors`
 - `GET /api/selection`
 - `POST /api/selection`
+- `POST /api/decision-memo`
 - `GET /api/vendors/export.csv`
 
 ## Data Model
@@ -80,7 +83,7 @@ The selected vendor is persisted in an `app_state` table so it survives reloads.
 ## Tradeoffs
 
 - I chose a simple two-table SQLite schema instead of a larger relational model to keep the app readable and easy to run.
-- Weighted scoring and CSV export were included because they add real evaluator value without much operational complexity.
+- Weighted scoring, CSV export, and the persisted decision memo were included because they add real evaluator value without introducing unnecessary complexity.
 - I did not build the raw quote AI parsing stretch goal because I prioritized the mandatory end-to-end workflow and wanted the shipped version to stay polished and dependable.
 
 ## AI Usage

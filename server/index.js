@@ -28,6 +28,30 @@ function mapVendor(row, selectedVendorId) {
   };
 }
 
+async function getDecisionMemo(db) {
+  const memo = await db.get(
+    "SELECT value FROM app_state WHERE key = 'decisionMemo'",
+  );
+
+  if (!memo) {
+    return {
+      vendorId: null,
+      content: '',
+      updatedAt: null,
+    };
+  }
+
+  try {
+    return JSON.parse(memo.value);
+  } catch {
+    return {
+      vendorId: null,
+      content: '',
+      updatedAt: null,
+    };
+  }
+}
+
 async function startServer() {
   const db = await initializeDatabase();
   const app = express();
@@ -89,6 +113,7 @@ async function startServer() {
       "SELECT value FROM app_state WHERE key = 'selectedVendorId'",
     );
     const selectedVendorId = selection ? Number(selection.value) : null;
+    const decisionMemo = await getDecisionMemo(db);
 
     const vendors = rows.map((row) => mapVendor(row, selectedVendorId));
     const stats = vendors.reduce(
@@ -104,6 +129,7 @@ async function startServer() {
       vendors,
       categories: categories.map((item) => item.category),
       selectedVendorId,
+      decisionMemo,
       summary: {
         vendorCount: vendors.length,
         averageQuotedPrice:
@@ -118,9 +144,11 @@ async function startServer() {
     const selection = await db.get(
       "SELECT value FROM app_state WHERE key = 'selectedVendorId'",
     );
+    const decisionMemo = await getDecisionMemo(db);
 
     res.json({
       selectedVendorId: selection ? Number(selection.value) : null,
+      decisionMemo,
     });
   });
 
@@ -149,6 +177,47 @@ async function startServer() {
     return res.json({
       message: 'Selection saved.',
       selectedVendorId: vendorId,
+    });
+  });
+
+  app.post('/api/decision-memo', async (req, res) => {
+    const vendorId = Number(req.body.vendorId);
+    const content = String(req.body.content ?? '').trim();
+
+    if (!Number.isInteger(vendorId)) {
+      return res.status(400).json({ message: 'vendorId must be an integer.' });
+    }
+
+    if (content.length > 400) {
+      return res
+        .status(400)
+        .json({ message: 'Decision memo must be 400 characters or fewer.' });
+    }
+
+    const vendor = await db.get('SELECT id FROM vendors WHERE id = ?', vendorId);
+
+    if (!vendor) {
+      return res.status(404).json({ message: 'Vendor not found.' });
+    }
+
+    const payload = JSON.stringify({
+      vendorId,
+      content,
+      updatedAt: new Date().toISOString(),
+    });
+
+    await db.run(
+      `
+        INSERT INTO app_state (key, value)
+        VALUES ('decisionMemo', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      `,
+      payload,
+    );
+
+    return res.json({
+      message: 'Decision memo saved.',
+      decisionMemo: JSON.parse(payload),
     });
   });
 
