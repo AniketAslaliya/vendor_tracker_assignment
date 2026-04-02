@@ -122,6 +122,8 @@ function App() {
   const [memoDraft, setMemoDraft] = useState('')
   const [memoSaving, setMemoSaving] = useState(false)
   const [isMemoOpen, setIsMemoOpen] = useState(false)
+  const [activeNav, setActiveNav] = useState('Dashboard')
+  const [analyticsWindow, setAnalyticsWindow] = useState('30d')
 
   const deferredSearch = useDeferredValue(searchInput)
   const leadTimeWeight = 100 - priceWeight
@@ -334,6 +336,13 @@ function App() {
     { value: 'all', label: 'All vendors' },
   ]
 
+  const navOptions = ['Dashboard', 'Vendors', 'Analytics', 'Finance']
+  const analyticsWindowOptions = [
+    { value: '7d', label: '7D' },
+    { value: '30d', label: '30D' },
+    { value: '90d', label: '90D' },
+  ]
+
   const sortedVendors = useMemo(() => {
     const list = [...comparison.rankedVendors]
 
@@ -379,52 +388,179 @@ function App() {
     return `/api/vendors/export.csv?${params.toString()}`
   }, [exportIds, exportScope])
 
+  const totalQuotedValue = useMemo(
+    () => sortedVendors.reduce((total, vendor) => total + vendor.quote.quotedPrice, 0),
+    [sortedVendors],
+  )
+
+  const totalShippingValue = useMemo(
+    () => sortedVendors.reduce((total, vendor) => total + vendor.quote.shippingCost, 0),
+    [sortedVendors],
+  )
+
+  const totalLandedValue = useMemo(
+    () => sortedVendors.reduce((total, vendor) => total + vendor.quote.totalCost, 0),
+    [sortedVendors],
+  )
+
+  const topRankedVendor = sortedVendors[0] ?? null
+  const cheapestVendor = sortedVendors.find((vendor) => vendor.id === comparison.cheapestVendorId) ?? null
+  const fastestVendor = sortedVendors.find((vendor) => vendor.id === comparison.fastestVendorId) ?? null
+
+  const analyticsVendorLimit = analyticsWindow === '7d' ? 4 : analyticsWindow === '90d' ? 8 : 6
+  const analyticsTopVendors = sortedVendors.slice(0, analyticsVendorLimit)
+  const maxAnalyticsScore = analyticsTopVendors.reduce(
+    (max, vendor) => Math.max(max, vendor.weightedScore),
+    1,
+  )
+  const maxAnalyticsTotal = analyticsTopVendors.reduce(
+    (max, vendor) => Math.max(max, vendor.quote.totalCost),
+    1,
+  )
+
+  const moduleCopy = {
+    Vendors: {
+      title: 'Vendor workspace',
+      description: 'Review and manage supplier records, shortlist vendors, and finalize selections.',
+    },
+    Analytics: {
+      title: 'Analytics overview',
+      description: 'Track performance signals, scoring confidence, and shortlist quality in one place.',
+    },
+    Finance: {
+      title: 'Finance console',
+      description: 'Monitor landed costs, shipping impact, and commercial totals across all visible vendors.',
+    },
+  }
+
+  const dashboardQuickLinks = [
+    {
+      key: 'Vendors',
+      title: 'Vendor Operations',
+      text: 'Open vendor workspace to filter, compare, and finalize suppliers.',
+      cta: 'Manage vendor workflow',
+      highlights: [
+        `${numberFormatter.format(summary.vendorCount)} active vendors`,
+        `${selectedVendor ? selectedVendor.name : 'No vendor selected'} current pick`,
+      ],
+    },
+    {
+      key: 'Analytics',
+      title: 'Performance Analytics',
+      text: 'Review scoring trends and procurement performance diagrams.',
+      cta: 'Open analytics dashboard',
+      highlights: [
+        `${topRankedVendor ? topRankedVendor.name : 'No top ranked vendor'} top ranked`,
+        `${summary.averageLeadTimeDays.toFixed(1)} day avg lead-time`,
+      ],
+    },
+    {
+      key: 'Finance',
+      title: 'Finance Overview',
+      text: 'Track total quoted, shipping, and landed commercial value.',
+      cta: 'Review commercial totals',
+      highlights: [
+        `${formatCurrency(totalLandedValue)} landed spend`,
+        `${formatCurrency(totalShippingValue)} shipping contribution`,
+      ],
+    },
+  ]
+
+  const showSummaryStrip = activeNav === 'Dashboard'
+  const showWorkspaceModule = activeNav === 'Vendors'
+  const showDecisionHub = activeNav === 'Vendors'
+  const showTableSection = activeNav === 'Vendors'
+  const showShortlist = activeNav === 'Vendors'
+
   return (
     <main className="app-shell">
-      <section className="hero-panel">
+      <header className="top-nav" aria-label="Main navigation">
+        <nav className="nav-links" aria-label="Primary links">
+          {navOptions.map((option) => {
+            const isActive = option === activeNav
+
+            return (
+              <button
+                key={option}
+                type="button"
+                className={`nav-link ${isActive ? 'active' : ''}`}
+                onClick={() => setActiveNav(option)}
+              >
+                {option}
+              </button>
+            )
+          })}
+        </nav>
+
+        <div className="nav-meta">
+          <span>{numberFormatter.format(summary.vendorCount)} vendors</span>
+        </div>
+      </header>
+
+      {activeNav !== 'Dashboard' ? (
+        <section className="module-hero">
+          <div>
+            <p className="eyebrow">{activeNav}</p>
+            <h1>{moduleCopy[activeNav]?.title ?? 'Workspace'}</h1>
+            <p>{moduleCopy[activeNav]?.description ?? ''}</p>
+          </div>
+        </section>
+      ) : null}
+
+      {activeNav === 'Dashboard' ? (
+        <section className="hero-panel">
         <div className="hero-copy">
           <p className="eyebrow">Ops Procurement Workspace</p>
           <p className="hero-kicker">Live sourcing cockpit</p>
           <h1>Vendor Tracker</h1>
           <p className="hero-text">
-            Compare supplier quotes, evaluate tradeoffs between price and delivery,
-            and move from vendor review to final decision without losing context.
+            Use this dashboard as your control center. Jump into Vendors for execution,
+            Analytics for insights, and Finance for commercial totals.
           </p>
 
-          <div className="hero-meta-strip" aria-label="Procurement highlights">
-            <article>
-              <span>Active vendors</span>
-              <strong>{numberFormatter.format(summary.vendorCount)}</strong>
-            </article>
-            <article>
-              <span>Current mode</span>
-              <strong>{priceWeight}% value, {leadTimeWeight}% speed</strong>
-            </article>
-            <article>
-              <span>Memo status</span>
-              <strong>{decisionMemo.content ? 'Decision logged' : 'Awaiting rationale'}</strong>
-            </article>
+          <div className="hero-actions">
+            {dashboardQuickLinks.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={item.key === 'Vendors' ? 'memo-button' : 'modal-secondary'}
+                onClick={() => setActiveNav(item.key)}
+              >
+                Open {item.key}
+              </button>
+            ))}
           </div>
         </div>
 
         <aside className="hero-side">
-          <p className="hero-side-label">Current decision</p>
-          <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
-          <p>
-            {selectedVendor
-              ? `${formatCurrency(selectedVendor.quote.totalCost)} total landed cost | ${selectedVendor.quote.leadTimeDays} day lead time`
-              : 'Review the shortlist and lock a vendor when you are ready.'}
-          </p>
-
-          <div className="hero-side-points">
-            <span>Centralized quote intelligence</span>
-            <span>Faster shortlist decisions</span>
-            <span>Traceable final rationale</span>
-          </div>
+          <p className="hero-side-label">Platform status</p>
+          <strong>{selectedVendor ? `${selectedVendor.name} is currently selected` : 'No vendor selected yet'}</strong>
+          <p>{decisionMemo.content ? 'Decision memo is available for audit trail.' : 'Decision memo not captured yet.'}</p>
         </aside>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="summary-strip" aria-label="Summary metrics">
+      {activeNav === 'Dashboard' ? (
+        <section className="dashboard-portal">
+          {dashboardQuickLinks.map((item) => (
+            <article key={item.key} className="portal-card">
+              <h3>{item.title}</h3>
+              <p>{item.text}</p>
+              <div className="portal-highlights">
+                {item.highlights.map((highlight) => (
+                  <span key={`${item.key}-${highlight}`}>{highlight}</span>
+                ))}
+              </div>
+              <button type="button" className="modal-secondary" onClick={() => setActiveNav(item.key)}>
+                {item.cta}
+              </button>
+            </article>
+          ))}
+        </section>
+      ) : null}
+
+      {showSummaryStrip ? (
+        <section className="summary-strip" aria-label="Summary metrics">
         <article>
           <span>Visible vendors</span>
           <strong>{numberFormatter.format(summary.vendorCount)}</strong>
@@ -441,109 +577,115 @@ function App() {
           <span>Scoring model</span>
           <strong>{priceWeight}% price / {leadTimeWeight}% speed</strong>
         </article>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="workspace-bar">
-        <div className="workspace-copy">
-          <p className="eyebrow">Procurement desk</p>
-          <h2>Shortlist vendors, save the final call, and keep the reason attached</h2>
-        </div>
-        <div className="export-controls">
-          <label className="export-field">
-            <span>Export scope</span>
+      {showWorkspaceModule ? (
+        <section className="workspace-module">
+        <section className="workspace-bar">
+          <div className="workspace-copy">
+            <p className="eyebrow">Procurement desk</p>
+            <h2>Shortlist vendors, save the final call, and keep the reason attached</h2>
+          </div>
+          <div className="export-controls">
+            <label className="export-field">
+              <span>Export scope</span>
+              <ThemedSelect
+                value={exportScope}
+                onChange={setExportScope}
+                options={exportOptions}
+                ariaLabel="Export scope"
+              />
+            </label>
+            <a
+              className="export-link"
+              href={exportHref}
+              aria-disabled={exportScope !== 'all' && exportScope !== 'selected' && exportIds.length === 0}
+            >
+              Export CSV
+            </a>
+          </div>
+        </section>
+
+        <section className="control-panel">
+          <label className="field search-field">
+            <span>Search vendors</span>
+            <input
+              type="search"
+              value={searchInput}
+              autoComplete="off"
+              onChange={(event) => {
+                const value = event.target.value
+                startTransition(() => setSearchInput(value))
+                setIsSuggestionOpen(true)
+              }}
+              onFocus={() => setIsSuggestionOpen(true)}
+              onBlur={() => {
+                window.setTimeout(() => setIsSuggestionOpen(false), 120)
+              }}
+              placeholder="Search by vendor or contact"
+            />
+
+            {isSuggestionOpen && searchInput.trim() && searchSuggestions.length > 0 ? (
+              <div className="search-suggestions" role="listbox" aria-label="Vendor suggestions">
+                {searchSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    className="suggestion-item"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      startTransition(() => setSearchInput(suggestion))
+                      setIsSuggestionOpen(false)
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </label>
+
+          <label className="field">
+            <span>Category</span>
             <ThemedSelect
-              value={exportScope}
-              onChange={setExportScope}
-              options={exportOptions}
-              ariaLabel="Export scope"
+              value={category}
+              onChange={setCategory}
+              options={categoryOptions}
+              ariaLabel="Category"
             />
           </label>
-          <a
-            className="export-link"
-            href={exportHref}
-            aria-disabled={exportScope !== 'all' && exportScope !== 'selected' && exportIds.length === 0}
-          >
-            Export CSV
-          </a>
-        </div>
-      </section>
 
-      <section className="control-panel">
-        <label className="field search-field">
-          <span>Search vendors</span>
-          <input
-            type="search"
-            value={searchInput}
-            autoComplete="off"
-            onChange={(event) => {
-              const value = event.target.value
-              startTransition(() => setSearchInput(value))
-              setIsSuggestionOpen(true)
-            }}
-            onFocus={() => setIsSuggestionOpen(true)}
-            onBlur={() => {
-              window.setTimeout(() => setIsSuggestionOpen(false), 120)
-            }}
-            placeholder="Search by vendor or contact"
-          />
+          <label className="field">
+            <span>Sort by</span>
+            <ThemedSelect
+              value={sortBy}
+              onChange={setSortBy}
+              options={sortOptions}
+              ariaLabel="Sort vendors"
+            />
+          </label>
 
-          {isSuggestionOpen && searchInput.trim() && searchSuggestions.length > 0 ? (
-            <div className="search-suggestions" role="listbox" aria-label="Vendor suggestions">
-              {searchSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  className="suggestion-item"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    startTransition(() => setSearchInput(suggestion))
-                    setIsSuggestionOpen(false)
-                  }}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </label>
+          <label className="field field-slider">
+            <span>Weighted scoring</span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={priceWeight}
+              onChange={(event) => setPriceWeight(Number(event.target.value))}
+            />
+            <small>Adjust the balance between commercial value and speed.</small>
+          </label>
+        </section>
 
-        <label className="field">
-          <span>Category</span>
-          <ThemedSelect
-            value={category}
-            onChange={setCategory}
-            options={categoryOptions}
-            ariaLabel="Category"
-          />
-        </label>
+        {error ? <p className="status-message error">{error}</p> : null}
+        {loading ? <p className="status-message">Loading vendor quotes...</p> : null}
+        </section>
+      ) : null}
 
-        <label className="field">
-          <span>Sort by</span>
-          <ThemedSelect
-            value={sortBy}
-            onChange={setSortBy}
-            options={sortOptions}
-            ariaLabel="Sort vendors"
-          />
-        </label>
-
-        <label className="field field-slider">
-          <span>Weighted scoring</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={priceWeight}
-            onChange={(event) => setPriceWeight(Number(event.target.value))}
-          />
-          <small>Adjust the balance between commercial value and speed.</small>
-        </label>
-      </section>
-
-      {error ? <p className="status-message error">{error}</p> : null}
-      {loading ? <p className="status-message">Loading vendor quotes...</p> : null}
-
-      <section className="decision-hub">
+      {showDecisionHub ? (
+        <section className="decision-hub">
         <div className="decision-flow-heading">
           <p className="eyebrow">Decision flow</p>
           <h2>Review to Select to Memo to Finalize</h2>
@@ -579,9 +721,153 @@ function App() {
             {decisionMemo.content ? 'Open memo' : 'Add memo'}
           </button>
         </div>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="table-section">
+      {activeNav === 'Analytics' ? (
+        <section className="analytics-module">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Analytics</p>
+              <h2>Performance and ranking intelligence</h2>
+            </div>
+            <div className="analytics-tools">
+              <p>Keep a fast read on shortlist quality before approving final procurement decisions.</p>
+              <div className="window-switch" role="group" aria-label="Analytics time window">
+                {analyticsWindowOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`window-btn ${analyticsWindow === option.value ? 'active' : ''}`}
+                    onClick={() => setAnalyticsWindow(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="analytics-grid">
+            <article>
+              <span>Top ranked vendor</span>
+              <strong>{topRankedVendor ? topRankedVendor.name : 'No vendor available'}</strong>
+              <p>{topRankedVendor ? `Weighted score ${topRankedVendor.weightedScore.toFixed(3)}` : 'Waiting for data'}</p>
+            </article>
+            <article>
+              <span>Best commercial value</span>
+              <strong>{cheapestVendor ? cheapestVendor.name : 'No vendor available'}</strong>
+              <p>Lowest quoted price in current filtered list.</p>
+            </article>
+            <article>
+              <span>Fastest delivery</span>
+              <strong>{fastestVendor ? fastestVendor.name : 'No vendor available'}</strong>
+              <p>Shortest lead-time from visible vendor options.</p>
+            </article>
+            <article>
+              <span>Average lead-time</span>
+              <strong>{summary.averageLeadTimeDays.toFixed(1)} days</strong>
+              <p>Based on currently filtered vendors.</p>
+            </article>
+          </div>
+
+          <div className="diagram-grid">
+            <article className="diagram-card">
+              <div className="diagram-header">
+                <h3>Top weighted scores</h3>
+                <p>Ranked vendors by weighted model</p>
+              </div>
+              <div className="bars-chart" role="img" aria-label="Top weighted score bars">
+                {analyticsTopVendors.map((vendor) => (
+                  <div key={vendor.id} className="bar-row">
+                    <span className="bar-label">{vendor.name}</span>
+                    <div className="bar-track">
+                      <span
+                        className="bar-fill"
+                        style={{ width: `${(vendor.weightedScore / maxAnalyticsScore) * 100}%` }}
+                      />
+                      <span className="chart-tooltip">
+                        {vendor.name} | score {vendor.weightedScore.toFixed(3)}
+                      </span>
+                    </div>
+                    <strong>{vendor.weightedScore.toFixed(3)}</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="diagram-card">
+              <div className="diagram-header">
+                <h3>Cost and lead-time profile</h3>
+                <p>Top vendors: total cost and lead days</p>
+              </div>
+              <div className="dual-metric-chart" role="img" aria-label="Cost and lead time comparison">
+                {analyticsTopVendors.map((vendor) => (
+                  <div key={`${vendor.id}-metrics`} className="metric-row">
+                    <span className="metric-label">{vendor.name}</span>
+                    <div className="metric-bars">
+                      <div className="metric-track">
+                        <span
+                          className="metric-cost"
+                          style={{ width: `${(vendor.quote.totalCost / maxAnalyticsTotal) * 100}%` }}
+                        />
+                      </div>
+                      <div className="metric-track">
+                        <span
+                          className="metric-lead"
+                          style={{ width: `${Math.min((vendor.quote.leadTimeDays / 30) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="chart-tooltip">
+                        {vendor.name} | total {formatCurrency(vendor.quote.totalCost)} | lead {vendor.quote.leadTimeDays} days
+                      </span>
+                    </div>
+                    <small>{vendor.quote.leadTimeDays}d</small>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      {activeNav === 'Finance' ? (
+        <section className="finance-module">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Finance</p>
+              <h2>Commercial totals and landed spend</h2>
+            </div>
+            <p>Understand the financial impact of supplier choices before confirming invoice workflow.</p>
+          </div>
+
+          <div className="analytics-grid finance-grid">
+            <article>
+              <span>Total quoted value</span>
+              <strong>{formatCurrency(totalQuotedValue)}</strong>
+              <p>Combined quoted value across visible vendors.</p>
+            </article>
+            <article>
+              <span>Total shipping value</span>
+              <strong>{formatCurrency(totalShippingValue)}</strong>
+              <p>Combined shipping impact in filtered scope.</p>
+            </article>
+            <article>
+              <span>Total landed value</span>
+              <strong>{formatCurrency(totalLandedValue)}</strong>
+              <p>Quote and shipping together for finance review.</p>
+            </article>
+            <article>
+              <span>Selected vendor cost</span>
+              <strong>{selectedVendor ? formatCurrency(selectedVendor.quote.totalCost) : 'No vendor selected'}</strong>
+              <p>{selectedVendor ? `${selectedVendor.name} is currently selected.` : 'Select a vendor to lock this value.'}</p>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      {showTableSection ? (
+        <section id="vendor-ledger" className="table-section">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Vendor ledger</p>
@@ -660,93 +946,98 @@ function App() {
             </tbody>
           </table>
         </div>
-      </section>
+        </section>
+      ) : null}
 
-      <section className="section-heading ranked-heading">
-        <div>
-          <p className="eyebrow">Ranked shortlist</p>
-          <h2>Final comparison cards</h2>
-        </div>
-        <p>Use these to review the top vendors in more detail before locking the final selection and opening the memo.</p>
-      </section>
+      {showShortlist ? (
+        <section className="shortlist-module">
+        <section className="section-heading ranked-heading">
+          <div>
+            <p className="eyebrow">Ranked shortlist</p>
+            <h2>Final comparison cards</h2>
+          </div>
+          <p>Use these to review the top vendors in more detail before locking the final selection and opening the memo.</p>
+        </section>
 
-      <section className="comparison-grid">
-        {sortedVendors.map((vendor, index) => {
-          const isSelected = vendor.id === selectedVendorId
-          const isCheapest = vendor.id === comparison.cheapestVendorId
-          const isFastest = vendor.id === comparison.fastestVendorId
-          const hasLowestTotal = vendor.id === comparison.lowestTotalVendorId
+        <section className="comparison-grid">
+          {sortedVendors.map((vendor, index) => {
+            const isSelected = vendor.id === selectedVendorId
+            const isCheapest = vendor.id === comparison.cheapestVendorId
+            const isFastest = vendor.id === comparison.fastestVendorId
+            const hasLowestTotal = vendor.id === comparison.lowestTotalVendorId
 
-          return (
-            <article
-              key={vendor.id}
-              className={`vendor-card ${isSelected ? 'selected' : ''}`}
-              style={{ animationDelay: `${index * 80}ms` }}
-            >
-              <div className="card-topline">
-                <span className="rank-pill">Rank #{index + 1}</span>
-                <span className="category-pill">{vendor.category}</span>
-              </div>
-
-              <div className="card-header">
-                <div>
-                  <h2>{vendor.name}</h2>
-                  <p>{vendor.contact.name} | {vendor.contact.email}</p>
+            return (
+              <article
+                key={vendor.id}
+                className={`vendor-card ${isSelected ? 'selected' : ''}`}
+                style={{ animationDelay: `${index * 80}ms` }}
+              >
+                <div className="card-topline">
+                  <span className="rank-pill">Rank #{index + 1}</span>
+                  <span className="category-pill">{vendor.category}</span>
                 </div>
-                {isSelected ? <span className="selected-pill">Saved pick</span> : null}
-              </div>
 
-              <div className="stat-grid">
-                <div>
-                  <span>Quoted price</span>
-                  <strong>{formatCurrency(vendor.quote.quotedPrice)}</strong>
+                <div className="card-header">
+                  <div>
+                    <h2>{vendor.name}</h2>
+                    <p>{vendor.contact.name} | {vendor.contact.email}</p>
+                  </div>
+                  {isSelected ? <span className="selected-pill">Saved pick</span> : null}
                 </div>
-                <div>
-                  <span>Shipping</span>
-                  <strong>{formatCurrency(vendor.quote.shippingCost)}</strong>
+
+                <div className="stat-grid">
+                  <div>
+                    <span>Quoted price</span>
+                    <strong>{formatCurrency(vendor.quote.quotedPrice)}</strong>
+                  </div>
+                  <div>
+                    <span>Shipping</span>
+                    <strong>{formatCurrency(vendor.quote.shippingCost)}</strong>
+                  </div>
+                  <div>
+                    <span>Total cost</span>
+                    <strong>{formatCurrency(vendor.quote.totalCost)}</strong>
+                  </div>
+                  <div>
+                    <span>Lead time</span>
+                    <strong>{vendor.quote.leadTimeDays} days</strong>
+                  </div>
                 </div>
-                <div>
-                  <span>Total cost</span>
-                  <strong>{formatCurrency(vendor.quote.totalCost)}</strong>
+
+                <div className="score-track" aria-hidden="true">
+                  <span style={{ width: `${Math.min(vendor.weightedScore * 100, 100)}%` }} />
                 </div>
-                <div>
-                  <span>Lead time</span>
-                  <strong>{vendor.quote.leadTimeDays} days</strong>
+
+                <div className="table-badges">
+                  {isCheapest ? <span className="highlight-chip">Best price</span> : null}
+                  {isFastest ? <span className="highlight-chip">Fastest delivery</span> : null}
+                  {hasLowestTotal ? <span className="highlight-chip">Lowest total</span> : null}
                 </div>
-              </div>
 
-              <div className="score-track" aria-hidden="true">
-                <span style={{ width: `${Math.min(vendor.weightedScore * 100, 100)}%` }} />
-              </div>
+                <p className="notes">{vendor.notes}</p>
 
-              <div className="table-badges">
-                {isCheapest ? <span className="highlight-chip">Best price</span> : null}
-                {isFastest ? <span className="highlight-chip">Fastest delivery</span> : null}
-                {hasLowestTotal ? <span className="highlight-chip">Lowest total</span> : null}
-              </div>
-
-              <p className="notes">{vendor.notes}</p>
-
-              <div className="card-footer">
-                <p>
-                  Weighted score <strong>{vendor.weightedScore.toFixed(3)}</strong>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleSelectVendor(vendor.id)}
-                  disabled={savingId === vendor.id}
-                >
-                  {savingId === vendor.id
-                    ? 'Saving...'
-                    : isSelected
-                      ? 'Selected'
-                      : 'Select vendor'}
-                </button>
-              </div>
-            </article>
-          )
-        })}
-      </section>
+                <div className="card-footer">
+                  <p>
+                    Weighted score <strong>{vendor.weightedScore.toFixed(3)}</strong>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectVendor(vendor.id)}
+                    disabled={savingId === vendor.id}
+                  >
+                    {savingId === vendor.id
+                      ? 'Saving...'
+                      : isSelected
+                        ? 'Selected'
+                        : 'Select vendor'}
+                  </button>
+                </div>
+              </article>
+            )
+          })}
+        </section>
+        </section>
+      ) : null}
 
       {isMemoOpen ? (
         <div className="modal-backdrop" onClick={() => setIsMemoOpen(false)}>

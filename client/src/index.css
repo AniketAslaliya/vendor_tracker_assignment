@@ -1,21 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap');
+
 :root {
-  --bg: #f6f1e8;
-  --bg-soft: #fbf7f0;
-  --text-strong: #221d18;
-  --text-soft: #64594d;
-  --text-muted: #7a6d60;
-  --line: rgba(214, 203, 189, 0.9);
-  --accent-1: #315f54;
-  --accent-2: #8b6844;
-  --shadow-sm: 0 10px 24px rgba(58, 42, 24, 0.05);
-  --shadow-lg: 0 22px 50px rgba(58, 42, 24, 0.08);
-  font-family: Georgia, "Times New Roman", serif;
+  --bg: #e9edf0;
+  --bg-soft: #f5f8fa;
+  --surface: rgba(255, 255, 255, 0.92);
+  --text-strong: #152225;
+  --text-soft: #4c5d60;
+  --text-muted: #6a7c80;
+  --line: rgba(195, 211, 215, 0.8);
+  --line-strong: rgba(173, 194, 198, 0.92);
+  --accent-1: #1d5254;
+  --accent-2: #335d61;
+  --shadow-sm: 0 12px 22px rgba(26, 42, 46, 0.06);
+  --shadow-md: 0 18px 32px rgba(20, 38, 42, 0.1);
+  --shadow-lg: 0 22px 42px rgba(17, 31, 34, 0.14);
+  --font-body: 'Manrope', 'Segoe UI', 'Inter', sans-serif;
+  --font-display: 'Fraunces', 'Georgia', serif;
+  font-family: var(--font-body);
   line-height: 1.5;
   font-weight: 400;
   color: var(--text-strong);
   background:
-    radial-gradient(circle at top left, rgba(139, 104, 68, 0.08), transparent 24%),
-    linear-gradient(180deg, #f7f2ea 0%, #f4efe7 100%);
+    radial-gradient(circle at 8% 0%, rgba(95, 140, 150, 0.18), transparent 28%),
+    radial-gradient(circle at 92% 14%, rgba(157, 181, 189, 0.2), transparent 24%),
+    linear-gradient(180deg, #edf2f5 0%, #e6ecef 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -38,10 +46,10 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgba(138, 109, 80, 0.025) 1px, transparent 1px),
-    linear-gradient(rgba(138, 109, 80, 0.025) 1px, transparent 1px);
-  background-size: 36px 36px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 88%);
+    linear-gradient(90deg, rgba(126, 151, 158, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(126, 151, 158, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 88%);
 }
 
 #root {
