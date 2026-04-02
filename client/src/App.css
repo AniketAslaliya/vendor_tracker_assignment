@@ -166,6 +166,34 @@ textarea {
   font-size: clamp(1.45rem, 2vw, 1.95rem);
 }
 
+.export-controls {
+  display: flex;
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.export-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.export-field span {
+  color: #6d6256;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.export-field select {
+  min-width: 220px;
+  min-height: 46px;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid #d6ccbe;
+  border-radius: 14px;
+  background: rgba(255, 253, 249, 0.92);
+  color: #261f18;
+  outline: none;
+}
+
 .export-link,
 .card-footer button,
 .memo-button,
@@ -611,6 +639,10 @@ textarea {
   .workspace-bar,
   .section-heading,
   .memo-footer {
+    display: grid;
+  }
+
+  .export-controls {
     display: grid;
   }
 

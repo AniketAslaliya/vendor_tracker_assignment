@@ -47,6 +47,7 @@ function App() {
   const [savingId, setSavingId] = useState(null)
   const [error, setError] = useState('')
   const [priceWeight, setPriceWeight] = useState(60)
+  const [exportScope, setExportScope] = useState('filtered')
   const [decisionMemo, setDecisionMemo] = useState({
     vendorId: null,
     content: '',
@@ -221,6 +222,32 @@ function App() {
 
   const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId)
   const topVendor = comparison.rankedVendors[0]
+  const exportIds = useMemo(() => {
+    if (exportScope === 'filtered') {
+      return comparison.rankedVendors.map((vendor) => vendor.id)
+    }
+
+    if (exportScope === 'top10') {
+      return comparison.rankedVendors.slice(0, 10).map((vendor) => vendor.id)
+    }
+
+    return []
+  }, [comparison.rankedVendors, exportScope])
+
+  const exportHref = useMemo(() => {
+    const params = new URLSearchParams()
+
+    if (exportScope === 'all') {
+      params.set('scope', 'all')
+    } else if (exportScope === 'selected') {
+      params.set('scope', 'selected')
+    } else {
+      params.set('scope', 'ids')
+      params.set('ids', exportIds.join(','))
+    }
+
+    return `/api/vendors/export.csv?${params.toString()}`
+  }, [exportIds, exportScope])
 
   return (
     <main className="app-shell">
@@ -269,9 +296,24 @@ function App() {
           <p className="eyebrow">Procurement desk</p>
           <h2>Shortlist vendors, save the final call, and keep the reason attached</h2>
         </div>
-        <a className="export-link" href="/api/vendors/export.csv">
-          Export CSV
-        </a>
+        <div className="export-controls">
+          <label className="export-field">
+            <span>Export scope</span>
+            <select value={exportScope} onChange={(event) => setExportScope(event.target.value)}>
+              <option value="filtered">Current filtered view</option>
+              <option value="top10">Top 10 ranked vendors</option>
+              <option value="selected">Selected vendor only</option>
+              <option value="all">All vendors</option>
+            </select>
+          </label>
+          <a
+            className="export-link"
+            href={exportHref}
+            aria-disabled={exportScope !== 'all' && exportScope !== 'selected' && exportIds.length === 0}
+          >
+            Export CSV
+          </a>
+        </div>
       </section>
 
       <section className="control-panel">

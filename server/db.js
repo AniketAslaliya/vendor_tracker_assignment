@@ -37,9 +37,12 @@ async function initializeDatabase() {
 
   const vendorCount = await db.get('SELECT COUNT(*) AS count FROM vendors');
 
-  if (vendorCount.count === 0) {
+  if (vendorCount.count !== vendors.length) {
+    await db.exec('DELETE FROM vendors');
+
     const statement = await db.prepare(`
       INSERT INTO vendors (
+        id,
         name,
         category,
         contact_name,
@@ -49,12 +52,13 @@ async function initializeDatabase() {
         shipping_cost,
         lead_time_days,
         notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     try {
       for (const vendor of vendors) {
         await statement.run(
+          vendor.id,
           vendor.name,
           vendor.category,
           vendor.contactName,

@@ -17,7 +17,7 @@ Vendor Tracker is a full-stack internal tool for ops teams to compare supplier q
 - Ranked comparison cards with auto-highlights for best price, fastest delivery, and lowest total cost
 - Persisted vendor selection stored in SQLite
 - Weighted scoring slider for price versus speed
-- CSV export for vendor comparison data
+- CSV export with scope options for all vendors, current filtered view, top-ranked shortlist, or the selected vendor
 - Persisted decision memo for the selected vendor so the team can keep the final reasoning attached to the choice
 
 ## Why SQLite
@@ -66,7 +66,7 @@ npm start
 
 ## Data Model
 
-The app seeds 6 vendors into SQLite with:
+The app seeds 30 vendors into SQLite with:
 
 - vendor name
 - category

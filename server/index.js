@@ -52,6 +52,46 @@ async function getDecisionMemo(db) {
   }
 }
 
+async function getSelectedVendorId(db) {
+  const selection = await db.get(
+    "SELECT value FROM app_state WHERE key = 'selectedVendorId'",
+  );
+
+  return selection ? Number(selection.value) : null;
+}
+
+function buildCsv(rows) {
+  const header = [
+    'Name',
+    'Category',
+    'Contact Name',
+    'Contact Phone',
+    'Contact Email',
+    'Quoted Price',
+    'Shipping Cost',
+    'Total Cost',
+    'Lead Time Days',
+  ];
+
+  const lines = rows.map((row) =>
+    [
+      row.name,
+      row.category,
+      row.contact_name,
+      row.contact_phone,
+      row.contact_email,
+      row.quoted_price,
+      row.shipping_cost,
+      Number(row.quoted_price) + Number(row.shipping_cost),
+      row.lead_time_days,
+    ]
+      .map((field) => `"${String(field).replaceAll('"', '""')}"`)
+      .join(','),
+  );
+
+  return [header.join(','), ...lines].join('\n');
+}
+
 async function startServer() {
   const db = await initializeDatabase();
   const app = express();
@@ -109,10 +149,7 @@ async function startServer() {
     const categories = await db.all(
       'SELECT DISTINCT category FROM vendors ORDER BY category ASC',
     );
-    const selection = await db.get(
-      "SELECT value FROM app_state WHERE key = 'selectedVendorId'",
-    );
-    const selectedVendorId = selection ? Number(selection.value) : null;
+    const selectedVendorId = await getSelectedVendorId(db);
     const decisionMemo = await getDecisionMemo(db);
 
     const vendors = rows.map((row) => mapVendor(row, selectedVendorId));
@@ -141,13 +178,10 @@ async function startServer() {
   });
 
   app.get('/api/selection', async (_req, res) => {
-    const selection = await db.get(
-      "SELECT value FROM app_state WHERE key = 'selectedVendorId'",
-    );
     const decisionMemo = await getDecisionMemo(db);
 
     res.json({
-      selectedVendorId: selection ? Number(selection.value) : null,
+      selectedVendorId: await getSelectedVendorId(db),
       decisionMemo,
     });
   });
@@ -221,55 +255,86 @@ async function startServer() {
     });
   });
 
-  app.get('/api/vendors/export.csv', async (_req, res) => {
-    const rows = await db.all(`
-      SELECT
-        name,
-        category,
-        contact_name,
-        contact_phone,
-        contact_email,
-        quoted_price,
-        shipping_cost,
-        lead_time_days
-      FROM vendors
-      ORDER BY name ASC
-    `);
+  app.get('/api/vendors/export.csv', async (req, res) => {
+    const scope = req.query.scope?.trim() || 'all';
+    const ids = req.query.ids?.trim() || '';
+    const selectedVendorId = await getSelectedVendorId(db);
+    let rows;
 
-    const header = [
-      'Name',
-      'Category',
-      'Contact Name',
-      'Contact Phone',
-      'Contact Email',
-      'Quoted Price',
-      'Shipping Cost',
-      'Total Cost',
-      'Lead Time Days',
-    ];
+    if (scope === 'selected') {
+      if (!selectedVendorId) {
+        return res.status(400).json({ message: 'No vendor is currently selected.' });
+      }
 
-    const lines = rows.map((row) =>
-      [
-        row.name,
-        row.category,
-        row.contact_name,
-        row.contact_phone,
-        row.contact_email,
-        row.quoted_price,
-        row.shipping_cost,
-        Number(row.quoted_price) + Number(row.shipping_cost),
-        row.lead_time_days,
-      ]
-        .map((field) => `"${String(field).replaceAll('"', '""')}"`)
-        .join(','),
-    );
+      rows = await db.all(
+        `
+          SELECT
+            name,
+            category,
+            contact_name,
+            contact_phone,
+            contact_email,
+            quoted_price,
+            shipping_cost,
+            lead_time_days
+          FROM vendors
+          WHERE id = ?
+        `,
+        selectedVendorId,
+      );
+    } else if (scope === 'ids') {
+      const parsedIds = ids
+        .split(',')
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value));
+
+      if (parsedIds.length === 0) {
+        return res.status(400).json({ message: 'No vendor ids were provided.' });
+      }
+
+      const placeholders = parsedIds.map(() => '?').join(', ');
+      const fetchedRows = await db.all(
+        `
+          SELECT
+            id,
+            name,
+            category,
+            contact_name,
+            contact_phone,
+            contact_email,
+            quoted_price,
+            shipping_cost,
+            lead_time_days
+          FROM vendors
+          WHERE id IN (${placeholders})
+        `,
+        parsedIds,
+      );
+
+      const orderMap = new Map(parsedIds.map((id, index) => [id, index]));
+      rows = fetchedRows.sort((left, right) => orderMap.get(left.id) - orderMap.get(right.id));
+    } else {
+      rows = await db.all(`
+        SELECT
+          name,
+          category,
+          contact_name,
+          contact_phone,
+          contact_email,
+          quoted_price,
+          shipping_cost,
+          lead_time_days
+        FROM vendors
+        ORDER BY name ASC
+      `);
+    }
 
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader(
       'Content-Disposition',
       'attachment; filename="vendor-comparison.csv"',
     );
-    res.send([header.join(','), ...lines].join('\n'));
+    res.send(buildCsv(rows));
   });
 
   app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
