@@ -1,11 +1,21 @@
 :root {
-  font-family: Georgia, "Times New Roman", serif;
+  --bg: #f6f1e8;
+  --bg-soft: #fbf7f0;
+  --text-strong: #221d18;
+  --text-soft: #64594d;
+  --text-muted: #7a6d60;
+  --line: rgba(214, 203, 189, 0.9);
+  --accent-1: #315f54;
+  --accent-2: #8b6844;
+  --shadow-sm: 0 10px 24px rgba(58, 42, 24, 0.05);
+  --shadow-lg: 0 22px 50px rgba(58, 42, 24, 0.08);
+  font-family: "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #2b241c;
+  color: var(--text-strong);
   background:
-    radial-gradient(circle at top left, rgba(177, 144, 103, 0.12), transparent 26%),
-    linear-gradient(180deg, #f7f2e8 0%, #f4efe6 48%, #f1ece2 100%);
+    radial-gradient(circle at top left, rgba(139, 104, 68, 0.08), transparent 24%),
+    linear-gradient(180deg, #f7f2ea 0%, #f4efe7 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -27,11 +37,11 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(110, 88, 62, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(110, 88, 62, 0.03) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 92%);
+  background:
+    linear-gradient(90deg, rgba(138, 109, 80, 0.025) 1px, transparent 1px),
+    linear-gradient(rgba(138, 109, 80, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.32), transparent 88%);
 }
 
 #root {

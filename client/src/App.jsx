@@ -43,6 +43,7 @@ function App() {
   const [searchInput, setSearchInput] = useState('')
   const [category, setCategory] = useState('')
   const [selectedVendorId, setSelectedVendorId] = useState(null)
+  const [selectedVendorSummary, setSelectedVendorSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState(null)
   const [error, setError] = useState('')
@@ -55,6 +56,7 @@ function App() {
   })
   const [memoDraft, setMemoDraft] = useState('')
   const [memoSaving, setMemoSaving] = useState(false)
+  const [isMemoOpen, setIsMemoOpen] = useState(false)
 
   const deferredSearch = useDeferredValue(searchInput)
   const leadTimeWeight = 100 - priceWeight
@@ -90,6 +92,7 @@ function App() {
         setCategories(payload.categories)
         setSummary(payload.summary)
         setSelectedVendorId(payload.selectedVendorId)
+        setSelectedVendorSummary(payload.selectedVendor ?? null)
         setDecisionMemo(
           payload.decisionMemo ?? {
             vendorId: null,
@@ -115,6 +118,21 @@ function App() {
       ignore = true
     }
   }, [deferredSearch, category])
+
+  useEffect(() => {
+    if (!isMemoOpen) {
+      return undefined
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setIsMemoOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMemoOpen])
 
   const comparison = useMemo(() => {
     if (vendors.length === 0) {
@@ -175,6 +193,10 @@ function App() {
       }
 
       setSelectedVendorId(vendorId)
+      setSelectedVendorSummary(
+        vendors.find((vendor) => vendor.id === vendorId) ?? selectedVendorSummary,
+      )
+
       if (decisionMemo.vendorId !== vendorId) {
         setMemoDraft('')
       }
@@ -213,6 +235,7 @@ function App() {
       const payload = await response.json()
       setDecisionMemo(payload.decisionMemo)
       setMemoDraft(payload.decisionMemo.content)
+      setIsMemoOpen(false)
     } catch (saveError) {
       setError(saveError.message)
     } finally {
@@ -220,8 +243,9 @@ function App() {
     }
   }
 
-  const selectedVendor = vendors.find((vendor) => vendor.id === selectedVendorId)
+  const selectedVendor = selectedVendorSummary
   const topVendor = comparison.rankedVendors[0]
+
   const exportIds = useMemo(() => {
     if (exportScope === 'filtered') {
       return comparison.rankedVendors.map((vendor) => vendor.id)
@@ -443,7 +467,7 @@ function App() {
         <aside className="memo-panel">
           <div className="memo-panel-header">
             <p className="eyebrow">Decision memo</p>
-            <h2>Keep the final reasoning with the vendor choice</h2>
+            <h2>Capture the final rationale without crowding the main screen</h2>
           </div>
 
           <div className="memo-highlight">
@@ -456,30 +480,22 @@ function App() {
             </p>
           </div>
 
-          <label className="memo-field">
-            <span>Decision notes</span>
-            <textarea
-              value={memoDraft}
-              onChange={(event) => setMemoDraft(event.target.value.slice(0, 400))}
-              placeholder="Add why this vendor was chosen, negotiation notes, or next follow-up."
-            />
-          </label>
-
-          <div className="memo-footer">
-            <div>
-              <span className="memo-meta">Attached to</span>
-              <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
-              <span className="memo-meta">Updated {formatDate(decisionMemo.updatedAt)}</span>
-            </div>
-            <button
-              type="button"
-              className="memo-button"
-              onClick={handleSaveMemo}
-              disabled={memoSaving || !selectedVendorId}
-            >
-              {memoSaving ? 'Saving memo...' : 'Save memo'}
-            </button>
+          <div className="memo-preview">
+            <span className="memo-meta">Attached to</span>
+            <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
+            <span className="memo-meta">Updated {formatDate(decisionMemo.updatedAt)}</span>
+            <p>
+              {decisionMemo.content || 'No memo saved yet. Open the memo editor to capture commercial reasoning, negotiation context, or follow-up notes.'}
+            </p>
           </div>
+
+          <button
+            type="button"
+            className="memo-button memo-open-button"
+            onClick={() => setIsMemoOpen(true)}
+          >
+            {decisionMemo.content ? 'Open memo editor' : 'Add decision memo'}
+          </button>
         </aside>
       </section>
 
@@ -568,6 +584,83 @@ function App() {
           )
         })}
       </section>
+
+      {isMemoOpen ? (
+        <div className="modal-backdrop" onClick={() => setIsMemoOpen(false)}>
+          <section
+            className="memo-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="memo-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="memo-modal-header">
+              <div>
+                <p className="eyebrow">Decision memo</p>
+                <h2 id="memo-modal-title">Capture the final procurement reasoning</h2>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setIsMemoOpen(false)}
+                aria-label="Close memo dialog"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="memo-modal-grid">
+              <div className="memo-modal-summary">
+                <div className="memo-highlight">
+                  <span>Attached to</span>
+                  <strong>{selectedVendor ? selectedVendor.name : 'No vendor selected'}</strong>
+                  <p>
+                    {selectedVendor
+                      ? `${formatCurrency(selectedVendor.quote.totalCost)} total landed cost with ${selectedVendor.quote.leadTimeDays} day lead time`
+                      : 'Select a vendor before saving a memo.'}
+                  </p>
+                </div>
+
+                <div className="memo-highlight">
+                  <span>Last updated</span>
+                  <strong>{formatDate(decisionMemo.updatedAt)}</strong>
+                  <p>Use this space for negotiation context, approval notes, or why one vendor was chosen over the others.</p>
+                </div>
+              </div>
+
+              <label className="memo-field">
+                <span>Decision notes</span>
+                <textarea
+                  value={memoDraft}
+                  onChange={(event) => setMemoDraft(event.target.value.slice(0, 400))}
+                  placeholder="Add why this vendor was chosen, negotiation notes, commercial considerations, or next follow-up."
+                />
+              </label>
+            </div>
+
+            <div className="memo-modal-footer">
+              <span className="memo-meta">{memoDraft.length}/400 characters</span>
+              <div className="memo-modal-actions">
+                <button
+                  type="button"
+                  className="modal-secondary"
+                  onClick={() => setIsMemoOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="memo-button"
+                  onClick={handleSaveMemo}
+                  disabled={memoSaving || !selectedVendorId}
+                >
+                  {memoSaving ? 'Saving memo...' : 'Save memo'}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

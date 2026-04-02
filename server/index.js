@@ -60,6 +60,35 @@ async function getSelectedVendorId(db) {
   return selection ? Number(selection.value) : null;
 }
 
+async function getSelectedVendor(db) {
+  const selectedVendorId = await getSelectedVendorId(db);
+
+  if (!selectedVendorId) {
+    return null;
+  }
+
+  const row = await db.get(
+    `
+      SELECT
+        id,
+        name,
+        category,
+        contact_name,
+        contact_phone,
+        contact_email,
+        quoted_price,
+        shipping_cost,
+        lead_time_days,
+        notes
+      FROM vendors
+      WHERE id = ?
+    `,
+    selectedVendorId,
+  );
+
+  return row ? mapVendor(row, selectedVendorId) : null;
+}
+
 function buildCsv(rows) {
   const header = [
     'Name',
@@ -151,6 +180,7 @@ async function startServer() {
     );
     const selectedVendorId = await getSelectedVendorId(db);
     const decisionMemo = await getDecisionMemo(db);
+    const selectedVendor = await getSelectedVendor(db);
 
     const vendors = rows.map((row) => mapVendor(row, selectedVendorId));
     const stats = vendors.reduce(
@@ -166,6 +196,7 @@ async function startServer() {
       vendors,
       categories: categories.map((item) => item.category),
       selectedVendorId,
+      selectedVendor,
       decisionMemo,
       summary: {
         vendorCount: vendors.length,
@@ -182,6 +213,7 @@ async function startServer() {
 
     res.json({
       selectedVendorId: await getSelectedVendorId(db),
+      selectedVendor: await getSelectedVendor(db),
       decisionMemo,
     });
   });
